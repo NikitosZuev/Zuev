@@ -1,14 +1,49 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Scriptik.lua" -- ссылка на удалённый скрипт с функцией
+local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Key.lua" -- ссылка на файл с ключом
 
-Key = "Zuka"
+-- Функция загрузки ключа с GitHub
+local function LoadKey()
+    local success, response = pcall(function()
+        return game:HttpGet(keyUrl .. "?t=" .. tostring(tick()), true)
+    end)
+    if not success then
+        warn("Не удалось загрузить ключ: " .. tostring(response))
+        return nil
+    end
 
+    local func, err = loadstring(response)
+    if not func then
+        warn("Ошибка компиляции ключа: " .. tostring(err))
+        return nil
+    end
+
+    local env = {}
+    setfenv(func, env)
+    local ok, err2 = pcall(func)
+    if not ok then
+        warn("Ошибка выполнения ключа: " .. tostring(err2))
+        return nil
+    end
+
+    return env.Key
+end
+
+local correctKey = LoadKey()
+if not correctKey then
+    warn("Ключ не загружен, скрипт не будет работать")
+    return
+end
+
+print("Текущий ключ: ", correctKey) -- выводим ключ для проверки
 
 -- Создаём ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = game.CoreGui
+
+-- Дальше твой GUI и логика с использованием correctKey
+
 
 -- Фон для окна ввода ключа
 local background = Instance.new("Frame")
