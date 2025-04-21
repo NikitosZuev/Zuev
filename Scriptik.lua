@@ -1,7 +1,9 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Scriptik.lua" -- Твой URL
+local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Scriptik.lua" -- ссылка на удалённый скрипт с функцией
+
+local correctKey = "zen"  -- ключ жёстко прописан здесь
 
 -- Создаём ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -88,19 +90,19 @@ keyBox.FocusLost:Connect(function()
     end
 end)
 
--- Функция загрузки ключа с GitHub
-local function LoadKey()
+-- Загрузка функции ThrowPlayers с GitHub
+local function LoadThrowFunction()
     local success, response = pcall(function()
         return game:HttpGet(keyUrl .. "?t=" .. tostring(tick()), true)
     end)
     if not success then
-        warn("Не удалось загрузить ключ: " .. tostring(response))
+        warn("Ошибка загрузки скрипта: " .. tostring(response))
         return nil
     end
 
     local func, err = loadstring(response)
     if not func then
-        warn("Ошибка компиляции ключа: " .. tostring(err))
+        warn("Ошибка компиляции скрипта: " .. tostring(err))
         return nil
     end
 
@@ -108,30 +110,21 @@ local function LoadKey()
     setfenv(func, env)
     local ok, err2 = pcall(func)
     if not ok then
-        warn("Ошибка выполнения ключа: " .. tostring(err2))
+        warn("Ошибка выполнения скрипта: " .. tostring(err2))
         return nil
     end
 
-    return env.Key
-end
-
-local currentKey = LoadKey()
-if not currentKey then
-    errorLabel.Text = "Не удалось загрузить ключ. Попробуйте позже."
-end
-
--- Функция швыряния игроков
-local function ThrowPlayers()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = player.Character.HumanoidRootPart
-            hrp.Velocity = Vector3.new(0, 100, 0)
-        end
+    if type(env.ThrowPlayers) == "function" then
+        return env.ThrowPlayers
+    else
+        warn("Функция ThrowPlayers не найдена в загруженном скрипте")
+        return nil
     end
-    print("Все игроки были швырнуты!")
 end
 
--- Создаём главное меню с кнопкой швыряния
+local ThrowPlayersFunc = LoadThrowFunction()
+
+-- Главное меню с кнопкой швыряния
 local function createMainMenu()
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 400, 0, 200)
@@ -167,19 +160,18 @@ local function createMainMenu()
     throwCorner.CornerRadius = UDim.new(0, 10)
 
     throwButton.MouseButton1Click:Connect(function()
-        ThrowPlayers()
+        if ThrowPlayersFunc then
+            ThrowPlayersFunc()
+        else
+            warn("Функция швыряния недоступна")
+        end
     end)
 end
 
 -- Обработка нажатия кнопки подтверждения ключа
 submitButton.MouseButton1Click:Connect(function()
-    if not currentKey then
-        errorLabel.Text = "Ключ не загружен, попробуйте позже."
-        return
-    end
-
     local enteredKey = keyBox.Text
-    if enteredKey == currentKey then
+    if enteredKey == correctKey then
         errorLabel.Text = ""
         inputFrame:Destroy()
         background:Destroy()
