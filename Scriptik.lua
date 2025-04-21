@@ -5,6 +5,7 @@ local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Scriptik
 
 Key = "Zuka"
 
+
 -- Создаём ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = game.CoreGui
