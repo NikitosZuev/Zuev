@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/key.lua" -- ссылка на файл с ключом
+local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Key.lua" -- ссылка на файл с ключом
 
 -- Функция загрузки ключа с GitHub
 local function LoadKey()
