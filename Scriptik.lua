@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local correctKey = "Zuev" -- Здесь меняешь ключ
+local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Scriptik.lua" -- Твой URL
 
 -- Создаём ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -88,6 +88,38 @@ keyBox.FocusLost:Connect(function()
     end
 end)
 
+-- Функция загрузки ключа с GitHub
+local function LoadKey()
+    local success, response = pcall(function()
+        return game:HttpGet(keyUrl .. "?t=" .. tostring(tick()), true)
+    end)
+    if not success then
+        warn("Не удалось загрузить ключ: " .. tostring(response))
+        return nil
+    end
+
+    local func, err = loadstring(response)
+    if not func then
+        warn("Ошибка компиляции ключа: " .. tostring(err))
+        return nil
+    end
+
+    local env = {}
+    setfenv(func, env)
+    local ok, err2 = pcall(func)
+    if not ok then
+        warn("Ошибка выполнения ключа: " .. tostring(err2))
+        return nil
+    end
+
+    return env.Key
+end
+
+local currentKey = LoadKey()
+if not currentKey then
+    errorLabel.Text = "Не удалось загрузить ключ. Попробуйте позже."
+end
+
 -- Функция швыряния игроков
 local function ThrowPlayers()
     for _, player in pairs(Players:GetPlayers()) do
@@ -141,8 +173,13 @@ end
 
 -- Обработка нажатия кнопки подтверждения ключа
 submitButton.MouseButton1Click:Connect(function()
+    if not currentKey then
+        errorLabel.Text = "Ключ не загружен, попробуйте позже."
+        return
+    end
+
     local enteredKey = keyBox.Text
-    if enteredKey == correctKey then
+    if enteredKey == currentKey then
         errorLabel.Text = ""
         inputFrame:Destroy()
         background:Destroy()
