@@ -1,4 +1,4 @@
-local Key = "Zuv"
+local Key = "Zeeeeeen"
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
