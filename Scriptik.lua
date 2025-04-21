@@ -3,6 +3,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/Scriptik.lua" -- ссылка на удалённый скрипт с функцией
 
+Key-Zuka
 
 -- Создаём ScreenGui
 local screenGui = Instance.new("ScreenGui")
