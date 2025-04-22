@@ -1,12 +1,6 @@
--- Универсальный скрипт для Roblox: Your Bizarre Adventure (YBA) + Blox Fruits (BF)
--- Автоматический выбор функционала по игре (PlaceId)
--- YBA: ключ и GUI (ваш оригинальный скрипт)
--- BF: вкладка "Фрукты" с поиском фруктов и телепортом на другой сервер, если фруктов нет
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -501,7 +495,213 @@ elseif placeId == PLACE_ID_YBA then
             label.Text = "Настройки аима и полёта"
             label.Parent = contentFrame
 
-            -- Здесь ваш функционал аима и полёта (вставьте ваш код)
+            -- Аимлок
+            local aimLockEnabled = false
+            local aimLockKey = Enum.KeyCode.Q -- по умолчанию Q
+            local targetPlayer = nil
+
+            -- UI для выбора клавиши аима
+            local aimKeyLabel = Instance.new("TextLabel")
+            aimKeyLabel.Size = UDim2.new(0, 200, 0, 30)
+            aimKeyLabel.Position = UDim2.new(0, 10, 0, 60)
+            aimKeyLabel.BackgroundTransparency = 1
+            aimKeyLabel.Font = Enum.Font.Gotham
+            aimKeyLabel.TextSize = 18
+            aimKeyLabel.TextColor3 = Color3.new(1, 1, 1)
+            aimKeyLabel.Text = "Клавиша для Aim Lock: Q"
+            aimKeyLabel.Parent = contentFrame
+
+            local aimKeyButton = Instance.new("TextButton")
+            aimKeyButton.Size = UDim2.new(0, 150, 0, 30)
+            aimKeyButton.Position = UDim2.new(0, 220, 0, 60)
+            aimKeyButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+            aimKeyButton.Font = Enum.Font.GothamBold
+            aimKeyButton.TextSize = 18
+            aimKeyButton.TextColor3 = Color3.new(1, 1, 1)
+            aimKeyButton.Text = "Изменить клавишу"
+            aimKeyButton.Parent = contentFrame
+
+            local waitingForKeyAim = false
+            aimKeyButton.MouseButton1Click:Connect(function()
+                if waitingForKeyAim then return end
+                waitingForKeyAim = true
+                aimKeyLabel.Text = "Нажмите любую клавишу..."
+                local conn
+                conn = UserInputService.InputBegan:Connect(function(input, gp)
+                    if not gp and input.UserInputType == Enum.UserInputType.Keyboard then
+                        aimLockKey = input.KeyCode
+                        aimKeyLabel.Text = "Клавиша для Aim Lock: " .. tostring(aimLockKey):gsub("Enum.KeyCode.", "")
+                        waitingForKeyAim = false
+                        conn:Disconnect()
+                    end
+                end)
+            end)
+
+            -- Функции аима из вашего скрипта с небольшими улучшениями
+            local function getMiddlePart(character)
+                return character and character:FindFirstChild("HumanoidRootPart")
+            end
+
+            local function getClosestTarget()
+                local closestDistance = math.huge
+                local closestPlayer = nil
+                if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetPos = player.Character.HumanoidRootPart.Position
+                        local dist = (LocalPlayer.Character.HumanoidRootPart.Position - targetPos).Magnitude
+                        if dist < closestDistance then
+                            closestDistance = dist
+                            closestPlayer = player
+                        end
+                    end
+                end
+                return closestPlayer
+            end
+
+            local function aimAtTarget(target)
+                if not target or not target.Character then return end
+                local middlePart = getMiddlePart(target.Character)
+                if not middlePart then return end
+                local targetPos = middlePart.Position
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
+            end
+
+            -- Переменные для аима
+            local aimLockActive = false
+            local aimTarget = nil
+
+            UserInputService.InputBegan:Connect(function(input, gp)
+                if gp then return end
+                if input.KeyCode == aimLockKey then
+                    aimLockActive = not aimLockActive
+                    if aimLockActive then
+                        aimTarget = getClosestTarget()
+                        print("Aim Lock Enabled")
+                    else
+                        aimTarget = nil
+                        print("Aim Lock Disabled")
+                    end
+                end
+            end)
+
+            RunService.RenderStepped:Connect(function()
+                if aimLockActive and aimTarget then
+                    aimAtTarget(aimTarget)
+                end
+            end)
+
+            -- === Полёт ===
+            local flightEnabled = false
+            local flightKey = Enum.KeyCode.F -- по умолчанию F
+
+            local flightSpeed = 50
+            local flightBodyVelocity = nil
+            local flightBodyGyro = nil
+
+            local flightLabel = Instance.new("TextLabel")
+            flightLabel.Size = UDim2.new(0, 200, 0, 30)
+            flightLabel.Position = UDim2.new(0, 10, 0, 110)
+            flightLabel.BackgroundTransparency = 1
+            flightLabel.Font = Enum.Font.Gotham
+            flightLabel.TextSize = 18
+            flightLabel.TextColor3 = Color3.new(1, 1, 1)
+            flightLabel.Text = "Клавиша для полёта: F"
+            flightLabel.Parent = contentFrame
+
+            local flightKeyButton = Instance.new("TextButton")
+            flightKeyButton.Size = UDim2.new(0, 150, 0, 30)
+            flightKeyButton.Position = UDim2.new(0, 220, 0, 110)
+            flightKeyButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+            flightKeyButton.Font = Enum.Font.GothamBold
+            flightKeyButton.TextSize = 18
+            flightKeyButton.TextColor3 = Color3.new(1, 1, 1)
+            flightKeyButton.Text = "Изменить клавишу"
+            flightKeyButton.Parent = contentFrame
+
+            local waitingForKeyFlight = false
+            flightKeyButton.MouseButton1Click:Connect(function()
+                if waitingForKeyFlight then return end
+                waitingForKeyFlight = true
+                flightLabel.Text = "Нажмите любую клавишу..."
+                local conn
+                conn = UserInputService.InputBegan:Connect(function(input, gp)
+                    if not gp and input.UserInputType == Enum.UserInputType.Keyboard then
+                        flightKey = input.KeyCode
+                        flightLabel.Text = "Клавиша для полёта: " .. tostring(flightKey):gsub("Enum.KeyCode.", "")
+                        waitingForKeyFlight = false
+                        conn:Disconnect()
+                    end
+                end)
+            end)
+
+            -- Включение/выключение полёта
+            UserInputService.InputBegan:Connect(function(input, gp)
+                if gp then return end
+                if input.KeyCode == flightKey then
+                    flightEnabled = not flightEnabled
+                    if flightEnabled then
+                        local character = LocalPlayer.Character
+                        if not character then return end
+                        local hrp = character:FindFirstChild("HumanoidRootPart")
+                        if not hrp then return end
+
+                        flightBodyVelocity = Instance.new("BodyVelocity")
+                        flightBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                        flightBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                        flightBodyVelocity.Parent = hrp
+
+                        flightBodyGyro = Instance.new("BodyGyro")
+                        flightBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+                        flightBodyGyro.CFrame = hrp.CFrame
+                        flightBodyGyro.Parent = hrp
+
+                        print("Flight enabled")
+                    else
+                        if flightBodyVelocity then
+                            flightBodyVelocity:Destroy()
+                            flightBodyVelocity = nil
+                        end
+                        if flightBodyGyro then
+                            flightBodyGyro:Destroy()
+                            flightBodyGyro = nil
+                        end
+                        print("Flight disabled")
+                    end
+                end
+            end)
+
+            -- Управление полётом в RenderStepped
+            RunService.RenderStepped:Connect(function()
+                if flightEnabled and flightBodyVelocity and flightBodyGyro then
+                    local character = LocalPlayer.Character
+                    if not character then return end
+                    local hrp = character:FindFirstChild("HumanoidRootPart")
+                    if not hrp then return end
+
+                    local moveDirection = Vector3.new(0,0,0)
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                        moveDirection = moveDirection + (Camera.CFrame.LookVector)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                        moveDirection = moveDirection - (Camera.CFrame.LookVector)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                        moveDirection = moveDirection - (Camera.CFrame.RightVector)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                        moveDirection = moveDirection + (Camera.CFrame.RightVector)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                    end
+                    flightBodyVelocity.Velocity = moveDirection.Unit * flightSpeed
+                    flightBodyGyro.CFrame = hrp.CFrame
+                end
+            end)
         end
 
         -- --- Вкладка 2: Другое ---
@@ -529,33 +729,4 @@ elseif placeId == PLACE_ID_YBA then
             label.BackgroundTransparency = 1
             label.Font = Enum.Font.GothamBold
             label.TextSize = 22
-            label.TextColor3 = Color3.new(1, 1, 1)
-            label.Text = "Очень важная информация будет здесь"
-            label.Parent = contentFrame
-        end
-
-        -- Назначение функций кнопкам
-        tab1.MouseButton1Click:Connect(setupTab1)
-        tab2.MouseButton1Click:Connect(setupTab2)
-        tab3.MouseButton1Click:Connect(setupTab3)
-
-        -- Показываем первую вкладку по умолчанию
-        setupTab1()
-    end
-
-    -- Проверка ключа
-    submitButton.MouseButton1Click:Connect(function()
-        local enteredKey = keyBox.Text
-        if enteredKey == correctKey then
-            errorLabel.Text = "Ключ верен!"
-            errorLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            createMainMenu()
-        else
-            errorLabel.Text = "Неверный ключ. Попробуйте еще раз."
-            errorLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-    end)
-
-else
-    print("Игра не поддерживается этим скриптом.")
-end
+            label.TextColor3 = Color3.new(
