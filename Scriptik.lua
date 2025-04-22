@@ -242,6 +242,11 @@ elseif placeId == PLACE_ID_YBA then
             return nil
         end
 
+        if not response then
+            warn("Ответ сервера пустой!")
+            return nil
+        end
+
         local func, err = load(response)
         if not func then
             warn("Ошибка компиляции ключа: " .. tostring(err))
@@ -250,7 +255,7 @@ elseif placeId == PLACE_ID_YBA then
 
         local env = {}
         setmetatable(env, {__index = _G})
-        setfenv(func, env) -- если setfenv не работает, можно заменить на: func = load(response, nil, "t", env)
+        --setfenv(func, env) -- Deprecated
         local ok, err2 = pcall(func)
         if not ok then
             warn("Ошибка выполнения ключа: " .. tostring(err2))
