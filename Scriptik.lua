@@ -242,6 +242,7 @@ elseif placeId == PLACE_ID_YBA then
             return nil
         end
 
+    -- Checking for empty response
         if not response then
             warn("Ответ сервера пустой!")
             return nil
@@ -253,10 +254,18 @@ elseif placeId == PLACE_ID_YBA then
             return nil
         end
 
-        local env = {}
+        --Local env = {}
+        --setmetatable(env, {__index = _G})
+        --setfenv(func, env) -- если setfenv не работает, можно заменить на: func = load(response, nil, "t", env)
+	    --[[local env = {}
+	    setmetatable(env, {__index = _G})
+	    _ENV = env
+	    func()]]
+        local env = {script = script}
         setmetatable(env, {__index = _G})
-        --setfenv(func, env) -- Deprecated
-        local ok, err2 = pcall(func)
+        local ok, err2 = pcall(function()
+            return func()
+        end)
         if not ok then
             warn("Ошибка выполнения ключа: " .. tostring(err2))
             return nil
