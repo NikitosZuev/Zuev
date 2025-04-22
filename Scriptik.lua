@@ -1,21 +1,271 @@
+-- Универсальный скрипт для Roblox: Your Bizarre Adventure (YBA) + Blox Fruits (BF)
+-- Автоматический выбор функционала по игре (PlaceId)
+-- YBA: ключ и GUI (ваш оригинальный скрипт)
+-- BF: вкладка "Фрукты" с поиском фруктов и телепортом на другой сервер, если фруктов нет
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 local placeId = game.PlaceId
 
-if placeId == 2753915549 then
-    -- Это PlaceId для Blox Fruits (пример)
-    print("Blox Fruits detected")
-    -- Скрипт для Blox Fruits
-    return
-elseif placeId == 2809202155 then
-    -- Это PlaceId для Your Bizarre Adventure (YBA)
-    print("YBA detected")
+local PLACE_ID_BLOX_FRUITS = 2753915549
+local PLACE_ID_YBA = 2809202155
 
-    -- === Загрузка ключа (ваш оригинальный код, без изменений) ===
+if placeId == PLACE_ID_BLOX_FRUITS then
+    -- ===========================
+    -- Blox Fruits: GUI и функционал "Фрукты"
+    -- ===========================
+
+    -- Создаем ScreenGui
+    local screenGuiBF = Instance.new("ScreenGui")
+    screenGuiBF.Name = "BloxFruitGui"
+    screenGuiBF.Parent = game.CoreGui
+    screenGuiBF.ResetOnSpawn = false
+
+    -- Основной фрейм
+    local mainFrameBF = Instance.new("Frame")
+    mainFrameBF.Size = UDim2.new(0, 600, 0, 400)
+    mainFrameBF.Position = UDim2.new(0.5, -300, 0.5, -200)
+    mainFrameBF.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainFrameBF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrameBF.Parent = screenGuiBF
+    local UICornerMain = Instance.new("UICorner")
+    UICornerMain.CornerRadius = UDim.new(0, 15)
+    UICornerMain.Parent = mainFrameBF
+
+    -- Вкладки слева
+    local tabsFrame = Instance.new("Frame")
+    tabsFrame.Size = UDim2.new(0, 150, 1, 0)
+    tabsFrame.Position = UDim2.new(0, 0, 0, 0)
+    tabsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    tabsFrame.Parent = mainFrameBF
+    local UICornerTabs = Instance.new("UICorner")
+    UICornerTabs.CornerRadius = UDim.new(0, 15)
+    UICornerTabs.Parent = tabsFrame
+
+    -- Контент справа
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -150, 1, 0)
+    contentFrame.Position = UDim2.new(0, 150, 0, 0)
+    contentFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    contentFrame.Parent = mainFrameBF
+    local UICornerContent = Instance.new("UICorner")
+    UICornerContent.CornerRadius = UDim.new(0, 15)
+    UICornerContent.Parent = contentFrame
+
+    -- Функция очистки контента
+    local function clearContent()
+        for _, child in pairs(contentFrame:GetChildren()) do
+            if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
+                child:Destroy()
+            end
+        end
+    end
+
+    -- Создаем кнопку вкладки
+    local function createTabButton(text, yPosition)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -20, 0, 40)
+        btn.Position = UDim2.new(0, 10, 0, yPosition)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 20
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Text = text
+        btn.Parent = tabsFrame
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 10)
+        corner.Parent = btn
+        return btn
+    end
+
+    -- Функция телепорта на другой сервер Blox Fruits
+    local function teleportToAnotherServer()
+        print("Фруктов нет, ищем другой сервер...")
+        local servers = {}
+        local http = game:GetService("HttpService")
+
+        local success, response = pcall(function()
+            return game:HttpGet("https://games.roblox.com/v1/games/" .. PLACE_ID_BLOX_FRUITS .. "/servers/Public?sortOrder=Asc&limit=100")
+        end)
+        if success then
+            local data = http:JSONDecode(response)
+            for _, server in pairs(data.data) do
+                if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                    table.insert(servers, server.id)
+                end
+            end
+        else
+            warn("Не удалось получить список серверов")
+            return
+        end
+
+        if #servers > 0 then
+            local randomServer = servers[math.random(1, #servers)]
+            TeleportService:TeleportToPlaceInstance(PLACE_ID_BLOX_FRUITS, randomServer, LocalPlayer)
+        else
+            warn("Нет доступных серверов для телепорта")
+        end
+    end
+
+    -- Функция плавного полета к позиции
+    local function flyToPosition(targetPos)
+        local character = LocalPlayer.Character
+        if not character then return end
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        local speed = 100 -- скорость полета
+        local reached = false
+
+        -- Создаем BodyVelocity и BodyGyro для полета
+        local bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Velocity = Vector3.new(0,0,0)
+        bv.Parent = hrp
+
+        local bg = Instance.new("BodyGyro")
+        bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+        bg.CFrame = hrp.CFrame
+        bg.Parent = hrp
+
+        -- Полет к цели
+        while (hrp.Position - targetPos).Magnitude > 3 do
+            local direction = (targetPos - hrp.Position).Unit
+            bv.Velocity = direction * speed
+            bg.CFrame = CFrame.new(hrp.Position, targetPos)
+            RunService.Heartbeat:Wait()
+        end
+
+        -- Остановить движение
+        bv:Destroy()
+        bg:Destroy()
+    end
+
+    -- Функция поиска фруктов на карте
+    local function findFruits()
+        -- Поиск фруктов в workspace (папка может быть разной, проверим несколько вариантов)
+        local fruitFolder = workspace:FindFirstChild("FruitSpawns") or workspace:FindFirstChild("Fruits") or workspace
+
+        local fruits = {}
+        for _, obj in pairs(fruitFolder:GetChildren()) do
+            if obj:IsA("Model") and obj.Name:find("Fruit") then
+                -- Проверим, есть ли у фрукта PrimaryPart
+                if obj.PrimaryPart then
+                    table.insert(fruits, obj)
+                end
+            end
+        end
+
+        return fruits
+    end
+
+    -- Функция сбора фрукта (нажатие на ClickDetector)
+    local function collectFruit(fruitModel)
+        if not fruitModel then return end
+        local clickDetector = fruitModel:FindFirstChildWhichIsA("ClickDetector")
+        if clickDetector then
+            clickDetector:FireClick(LocalPlayer)
+            print("Фрукт собран: " .. fruitModel.Name)
+        else
+            print("ClickDetector не найден у фрукта: " .. fruitModel.Name)
+        end
+    end
+
+    -- Создаем контент вкладки "Фрукты"
+    local function setupFruitsTab()
+        clearContent()
+
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -20, 0, 40)
+        titleLabel.Position = UDim2.new(0, 10, 0, 10)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextSize = 24
+        titleLabel.TextColor3 = Color3.new(1,1,1)
+        titleLabel.Text = "Авто сбор фруктов"
+        titleLabel.Parent = contentFrame
+
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, -20, 0, 30)
+        infoLabel.Position = UDim2.new(0, 10, 0, 60)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Font = Enum.Font.Gotham
+        infoLabel.TextSize = 18
+        infoLabel.TextColor3 = Color3.new(1,1,1)
+        infoLabel.Text = "Нажмите кнопку для поиска фруктов на сервере"
+        infoLabel.Parent = contentFrame
+
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Size = UDim2.new(1, -20, 0, 30)
+        statusLabel.Position = UDim2.new(0, 10, 0, 100)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.Font = Enum.Font.GothamBold
+        statusLabel.TextSize = 20
+        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        statusLabel.Text = ""
+        statusLabel.Parent = contentFrame
+
+        local searchButton = Instance.new("TextButton")
+        searchButton.Size = UDim2.new(0, 200, 0, 50)
+        searchButton.Position = UDim2.new(0.5, -100, 0, 140)
+        searchButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+        searchButton.Font = Enum.Font.GothamBold
+        searchButton.TextSize = 22
+        searchButton.TextColor3 = Color3.new(1,1,1)
+        searchButton.Text = "Поиск фруктов"
+        searchButton.Parent = contentFrame
+        local cornerBtn = Instance.new("UICorner")
+        cornerBtn.CornerRadius = UDim.new(0, 12)
+        cornerBtn.Parent = searchButton
+
+        local searching = false
+
+        searchButton.MouseButton1Click:Connect(function()
+            if searching then return end
+            searching = true
+            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+            statusLabel.Text = "Ищу фрукты на сервере..."
+            task.spawn(function()
+                local fruits = findFruits()
+                if #fruits == 0 then
+                    statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    statusLabel.Text = "Фрукт не найден! Телепортирую на следующий сервер..."
+                    wait(2)
+                    teleportToAnotherServer()
+                else
+                    statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    statusLabel.Text = "Фрукт найден! Лечу к фрукту..."
+                    for _, fruit in pairs(fruits) do
+                        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            flyToPosition(fruit.PrimaryPart.Position + Vector3.new(0,3,0))
+                            collectFruit(fruit)
+                            wait(1)
+                        end
+                    end
+                    statusLabel.Text = "Все найденные фрукты собраны."
+                end
+                searching = false
+            end)
+        end)
+    end
+
+    -- Создаем вкладки (можно добавить другие, если нужно)
+    local fruitsTabButton = createTabButton("Фрукты", 10)
+    fruitsTabButton.MouseButton1Click:Connect(setupFruitsTab)
+
+    -- Показываем вкладку "Фрукты" по умолчанию
+    setupFruitsTab()
+
+elseif placeId == PLACE_ID_YBA then
+    -- ===========================
+    -- Your Bizarre Adventure (YBA): скрипт с ключом и GUI
+    -- ===========================
+
     local keyUrl = "https://raw.githubusercontent.com/NikitosZuev/Zuev/main/key.lua"
 
     local function LoadKey()
@@ -251,213 +501,7 @@ elseif placeId == 2809202155 then
             label.Text = "Настройки аима и полёта"
             label.Parent = contentFrame
 
-            -- Аимлок
-            local aimLockEnabled = false
-            local aimLockKey = Enum.KeyCode.Q -- по умолчанию Q
-            local targetPlayer = nil
-
-            -- UI для выбора клавиши аима
-            local aimKeyLabel = Instance.new("TextLabel")
-            aimKeyLabel.Size = UDim2.new(0, 200, 0, 30)
-            aimKeyLabel.Position = UDim2.new(0, 10, 0, 60)
-            aimKeyLabel.BackgroundTransparency = 1
-            aimKeyLabel.Font = Enum.Font.Gotham
-            aimKeyLabel.TextSize = 18
-            aimKeyLabel.TextColor3 = Color3.new(1, 1, 1)
-            aimKeyLabel.Text = "Клавиша для Aim Lock: Q"
-            aimKeyLabel.Parent = contentFrame
-
-            local aimKeyButton = Instance.new("TextButton")
-            aimKeyButton.Size = UDim2.new(0, 150, 0, 30)
-            aimKeyButton.Position = UDim2.new(0, 220, 0, 60)
-            aimKeyButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-            aimKeyButton.Font = Enum.Font.GothamBold
-            aimKeyButton.TextSize = 18
-            aimKeyButton.TextColor3 = Color3.new(1, 1, 1)
-            aimKeyButton.Text = "Изменить клавишу"
-            aimKeyButton.Parent = contentFrame
-
-            local waitingForKeyAim = false
-            aimKeyButton.MouseButton1Click:Connect(function()
-                if waitingForKeyAim then return end
-                waitingForKeyAim = true
-                aimKeyLabel.Text = "Нажмите любую клавишу..."
-                local conn
-                conn = UserInputService.InputBegan:Connect(function(input, gp)
-                    if not gp and input.UserInputType == Enum.UserInputType.Keyboard then
-                        aimLockKey = input.KeyCode
-                        aimKeyLabel.Text = "Клавиша для Aim Lock: " .. tostring(aimLockKey):gsub("Enum.KeyCode.", "")
-                        waitingForKeyAim = false
-                        conn:Disconnect()
-                    end
-                end)
-            end)
-
-            -- Функции аима из вашего скрипта с небольшими улучшениями
-            local function getMiddlePart(character)
-                return character and character:FindFirstChild("HumanoidRootPart")
-            end
-
-            local function getClosestTarget()
-                local closestDistance = math.huge
-                local closestPlayer = nil
-                if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        local targetPos = player.Character.HumanoidRootPart.Position
-                        local dist = (LocalPlayer.Character.HumanoidRootPart.Position - targetPos).Magnitude
-                        if dist < closestDistance then
-                            closestDistance = dist
-                            closestPlayer = player
-                        end
-                    end
-                end
-                return closestPlayer
-            end
-
-            local function aimAtTarget(target)
-                if not target or not target.Character then return end
-                local middlePart = getMiddlePart(target.Character)
-                if not middlePart then return end
-                local targetPos = middlePart.Position
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
-            end
-
-            -- Переменные для аима
-            local aimLockActive = false
-            local aimTarget = nil
-
-            UserInputService.InputBegan:Connect(function(input, gp)
-                if gp then return end
-                if input.KeyCode == aimLockKey then
-                    aimLockActive = not aimLockActive
-                    if aimLockActive then
-                        aimTarget = getClosestTarget()
-                        print("Aim Lock Enabled")
-                    else
-                        aimTarget = nil
-                        print("Aim Lock Disabled")
-                    end
-                end
-            end)
-
-            RunService.RenderStepped:Connect(function()
-                if aimLockActive and aimTarget then
-                    aimAtTarget(aimTarget)
-                end
-            end)
-
-            -- === Полёт ===
-            local flightEnabled = false
-            local flightKey = Enum.KeyCode.F -- по умолчанию F
-
-            local flightSpeed = 50
-            local flightBodyVelocity = nil
-            local flightBodyGyro = nil
-
-            local flightLabel = Instance.new("TextLabel")
-            flightLabel.Size = UDim2.new(0, 200, 0, 30)
-            flightLabel.Position = UDim2.new(0, 10, 0, 110)
-            flightLabel.BackgroundTransparency = 1
-            flightLabel.Font = Enum.Font.Gotham
-            flightLabel.TextSize = 18
-            flightLabel.TextColor3 = Color3.new(1, 1, 1)
-            flightLabel.Text = "Клавиша для полёта: F"
-            flightLabel.Parent = contentFrame
-
-            local flightKeyButton = Instance.new("TextButton")
-            flightKeyButton.Size = UDim2.new(0, 150, 0, 30)
-            flightKeyButton.Position = UDim2.new(0, 220, 0, 110)
-            flightKeyButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-            flightKeyButton.Font = Enum.Font.GothamBold
-            flightKeyButton.TextSize = 18
-            flightKeyButton.TextColor3 = Color3.new(1, 1, 1)
-            flightKeyButton.Text = "Изменить клавишу"
-            flightKeyButton.Parent = contentFrame
-
-            local waitingForKeyFlight = false
-            flightKeyButton.MouseButton1Click:Connect(function()
-                if waitingForKeyFlight then return end
-                waitingForKeyFlight = true
-                flightLabel.Text = "Нажмите любую клавишу..."
-                local conn
-                conn = UserInputService.InputBegan:Connect(function(input, gp)
-                    if not gp and input.UserInputType == Enum.UserInputType.Keyboard then
-                        flightKey = input.KeyCode
-                        flightLabel.Text = "Клавиша для полёта: " .. tostring(flightKey):gsub("Enum.KeyCode.", "")
-                        waitingForKeyFlight = false
-                        conn:Disconnect()
-                    end
-                end)
-            end)
-
-            -- Включение/выключение полёта
-            UserInputService.InputBegan:Connect(function(input, gp)
-                if gp then return end
-                if input.KeyCode == flightKey then
-                    flightEnabled = not flightEnabled
-                    if flightEnabled then
-                        local character = LocalPlayer.Character
-                        if not character then return end
-                        local hrp = character:FindFirstChild("HumanoidRootPart")
-                        if not hrp then return end
-
-                        flightBodyVelocity = Instance.new("BodyVelocity")
-                        flightBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                        flightBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                        flightBodyVelocity.Parent = hrp
-
-                        flightBodyGyro = Instance.new("BodyGyro")
-                        flightBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-                        flightBodyGyro.CFrame = hrp.CFrame
-                        flightBodyGyro.Parent = hrp
-
-                        print("Flight enabled")
-                    else
-                        if flightBodyVelocity then
-                            flightBodyVelocity:Destroy()
-                            flightBodyVelocity = nil
-                        end
-                        if flightBodyGyro then
-                            flightBodyGyro:Destroy()
-                            flightBodyGyro = nil
-                        end
-                        print("Flight disabled")
-                    end
-                end
-            end)
-
-            -- Управление полётом в RenderStepped
-            RunService.RenderStepped:Connect(function()
-                if flightEnabled and flightBodyVelocity and flightBodyGyro then
-                    local character = LocalPlayer.Character
-                    if not character then return end
-                    local hrp = character:FindFirstChild("HumanoidRootPart")
-                    if not hrp then return end
-
-                    local moveDirection = Vector3.new(0,0,0)
-                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                        moveDirection = moveDirection + (Camera.CFrame.LookVector)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                        moveDirection = moveDirection - (Camera.CFrame.LookVector)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                        moveDirection = moveDirection - (Camera.CFrame.RightVector)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                        moveDirection = moveDirection + (Camera.CFrame.RightVector)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                        moveDirection = moveDirection + Vector3.new(0, 1, 0)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-                        moveDirection = moveDirection - Vector3.new(0, 1, 0)
-                    end
-                    flightBodyVelocity.Velocity = moveDirection.Unit * flightSpeed
-                    flightBodyGyro.CFrame = hrp.CFrame
-                end
-            end)
+            -- Здесь ваш функционал аима и полёта (вставьте ваш код)
         end
 
         -- --- Вкладка 2: Другое ---
@@ -511,8 +555,7 @@ elseif placeId == 2809202155 then
             errorLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
     end)
+
 else
-    print("Игра не поддерживается.")
-    -- Обработка, если игра не поддерживается
-    return
+    print("Игра не поддерживается этим скриптом.")
 end
